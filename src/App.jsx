@@ -102,7 +102,7 @@ const CSS = `
     position: relative; overflow: hidden;
     box-shadow: 0 0 60px rgba(0,229,255,0.04);
   }
-    
+
 {loading && <div style={{color:"var(--muted)", marginTop: 12}}>Processing… large files may take a moment.</div>}
 {error && <div style={{color:"var(--accent2)", marginTop: 12}}>Error: {error}</div>}
 
@@ -388,6 +388,29 @@ function classifyUsage(count) {
   if (c >= 100) return "LOW";
   return "VERY LOW";
 }
+function buildSizingExport(servers) {
+  const rows = [];
+
+  servers.forEach(server => {
+    const recs = recommendInstances(server.vcpu, server.memory_gib);
+
+    recs.forEach(rec => {
+      rows.push({
+        server: server.server,
+        application: server.application,
+        required_vcpu: server.vcpu,
+        required_memory_gib: server.memory_gib,
+        instance_type: rec.instance_type,
+        instance_vcpu: rec.vCPU,
+        instance_memory_gib: rec.memory,
+        price_usd_per_hr: rec.price_usd
+      });
+    });
+  });
+
+  return rows;
+}
+
 
 function safeNum(v) {
   if (v == null || v === "") return null;
@@ -580,16 +603,19 @@ function recommendInstances(vcpu, memGib) {
 function exportToExcel(servers, databases, firewall) {
   const wb = XLSX.utils.book_new();
 
+  // ── Servers ──
   if (servers.length) {
     const ws = XLSX.utils.json_to_sheet(servers);
     XLSX.utils.book_append_sheet(wb, ws, "Servers");
   }
 
+  // ── Databases ──
   if (databases.length) {
     const ws = XLSX.utils.json_to_sheet(databases);
     XLSX.utils.book_append_sheet(wb, ws, "Databases");
   }
 
+  // ── Firewall ──
   if (firewall.length) {
     const agg = aggregateFirewall(firewall);
     const ws1 = XLSX.utils.json_to_sheet(agg);
@@ -600,8 +626,16 @@ function exportToExcel(servers, databases, firewall) {
     XLSX.utils.book_append_sheet(wb, ws2, "Firewall_Per_Server");
   }
 
+  // ✅ ── NEW: Sizing Recommendations ──
+  if (servers.length) {
+    const sizing = buildSizingExport(servers);
+    const ws = XLSX.utils.json_to_sheet(sizing);
+    XLSX.utils.book_append_sheet(wb, ws, "Sizing");
+  }
+
   XLSX.writeFile(wb, "aaq_full_analysis.xlsx");
 }
+
 
 function aggregateFirewall(rows) {
   const key = r => [r.source_hostname, r.destination_hostname, r.source_application,
