@@ -1,0 +1,15 @@
+services:
+  kyndryl-aaq-analysis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: kyndryl-aaq-analysis
+
+    ports:
+      - "11818:80"
+
+    restart: unless-stopped
+
+    # Optional but recommended
+    image: kyndryl-aaq-analysis-tool:latest
