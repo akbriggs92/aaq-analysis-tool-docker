@@ -18,7 +18,7 @@ function normalizeRef(ws) {
   }
 
   if (maxR >= 0 && maxC >= 0) {
-    ws['!ref'] = XLSX.utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
+    ws["!ref"] = XLSX.utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
   }
 }
 
@@ -98,17 +98,62 @@ function parseStakeholdersFromSheet(ws) {
   return out;
 }
 
-function findHeaderRow(raw, requiredTokens, maxScan = 50) {
-  const upto = Math.min(raw.length, maxScan);
-  const norm = (s) => String(s || "").trim().toLowerCase();
+// --- Application DR/Backup header detection ---
+// Many AAQ sheets have a "question" row and then a "label" row (e.g. yellow header)
+// We score candidates and choose the best match.
+function detectAppHeaderRow(raw, maxScan = 200) {
+  const norm = (s) => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
 
-  for (let i = 0; i < upto; i++) {
+  const preferred = [
+    { token: "application name", weight: 5 },
+    { token: "app id", weight: 2 },
+    { token: "rpo", weight: 4 },
+    { token: "rto", weight: 4 },
+    { token: "backup retention", weight: 4 },
+    { token: "full backup size", weight: 4 },
+    { token: "backup size", weight: 3 },
+    { token: "is dr solution currently in place", weight: 5 },
+    { token: "dr solution currently in place", weight: 4 },
+    { token: "dr description", weight: 4 },
+    { token: "do dr plans exist", weight: 4 },
+    { token: "dr plans exist", weight: 3 },
+    { token: "last dr test", weight: 4 },
+  ];
+
+  const weak = [
+    { token: "recovery point objective", weight: 1 },
+    { token: "recovery time objective", weight: 1 },
+    { token: "size of backup", weight: 1 },
+    { token: "backup retention duration", weight: 1 },
+  ];
+
+  let bestIdx = -1;
+  let bestScore = -1;
+
+  for (let i = 0; i < Math.min(raw.length, maxScan); i++) {
     const row = raw[i] || [];
     const headers = row.map(norm);
-    const ok = requiredTokens.every(t => headers.some(h => h.includes(t)));
-    if (ok) return i;
+
+    // Must have app name somewhere in row
+    if (!headers.some(h => h.includes("application name"))) continue;
+
+    let score = 0;
+    for (const p of preferred) if (headers.some(h => h.includes(p.token))) score += p.weight;
+    for (const w of weak) if (headers.some(h => h.includes(w.token))) score += w.weight;
+
+    // Prefer rows that have literal RPO/RTO (the label header row)
+    const hasLiteralRpoRto = headers.some(h => h === "rpo" || h.includes(" rpo")) && headers.some(h => h === "rto" || h.includes(" rto"));
+    if (hasLiteralRpoRto) score += 3;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = i;
+    }
   }
-  return -1;
+
+  // Require at least a meaningful score beyond just application name
+  if (bestScore < 7) return -1;
+  return bestIdx;
 }
 
 function parseAppDRBackupSheet(ws, sheetName) {
@@ -116,10 +161,10 @@ function parseAppDRBackupSheet(ws, sheetName) {
   const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
   if (!raw.length) return out;
 
-  const headerRowIdx = findHeaderRow(raw, ["application name"], 60);
+  const headerRowIdx = detectAppHeaderRow(raw);
   if (headerRowIdx === -1) return out;
 
-  const headers = raw[headerRowIdx].map(h => String(h || "").trim().toLowerCase());
+  const headers = raw[headerRowIdx].map(h => String(h || "").trim().toLowerCase().replace(/\s+/g, " "));
 
   const findIdx = (...names) => {
     const tokens = names.map(n => n.toLowerCase());
@@ -128,25 +173,35 @@ function parseAppDRBackupSheet(ws, sheetName) {
 
   const idxAppId = findIdx("app id", "application id");
   const idxAppName = findIdx("application name");
-  const idxRPO = findIdx("rpo", "recovery point");
-  const idxRTO = findIdx("rto", "recovery time");
-  const idxBackupSize = findIdx("full backup size", "backup size");
-  const idxBackupRetention = findIdx("backup retention");
 
-  const idxDRInPlace = findIdx("is dr solution currently in place", "dr solution currently in place");
-  const idxDRDesc = findIdx("dr description");
-  const idxDRPlans = findIdx("do dr plans exist", "dr plans exist");
-  const idxLastDRTest = findIdx("last dr test");
+  const idxRPO = findIdx("rpo", "recovery point objective");
+  const idxRTO = findIdx("rto", "recovery time objective");
+
+  const idxBackupSize = findIdx("full backup size", "backup size", "size of backup");
+  const idxBackupRetention = findIdx("backup retention", "backup retention duration");
+
+  const idxDRInPlace = findIdx(
+    "is dr solution currently in place",
+    "dr solution currently in place",
+    "dr solution",
+    "dr in place",
+    "disaster recovery plan in place"
+  );
+
+  const idxDRDesc = findIdx("dr description", "description of disaster recovery");
+  const idxDRPlans = findIdx("do dr plans exist", "dr plans exist", "dr plans");
+  const idxLastDRTest = findIdx("last dr test", "recent test date");
 
   for (let r = headerRowIdx + 1; r < raw.length; r++) {
     const row = raw[r] || [];
+
     const appName = idxAppName !== -1 ? String(row[idxAppName] || "").trim() : "";
     const appId = idxAppId !== -1 ? String(row[idxAppId] || "").trim() : "";
 
     // Skip rows with no app identifier
     if (!appName && !appId) continue;
 
-    out.push({
+    const rec = {
       sheet: sheetName,
       app_id: appId || null,
       application_name: appName || sheetName,
@@ -158,7 +213,13 @@ function parseAppDRBackupSheet(ws, sheetName) {
       dr_description: idxDRDesc !== -1 ? String(row[idxDRDesc] || "").trim() : "",
       dr_plans_exist: idxDRPlans !== -1 ? String(row[idxDRPlans] || "").trim() : "",
       last_dr_test: idxLastDRTest !== -1 ? String(row[idxLastDRTest] || "").trim() : "",
-    });
+    };
+
+    // Only keep if at least one of the fields is populated (avoid random matches)
+    const hasAny = [rec.rpo, rec.rto, rec.backup_size, rec.backup_retention, rec.dr_in_place, rec.dr_description, rec.dr_plans_exist, rec.last_dr_test]
+      .some(v => String(v || "").trim() !== "");
+
+    if (hasAny) out.push(rec);
   }
 
   return out;
@@ -166,17 +227,7 @@ function parseAppDRBackupSheet(ws, sheetName) {
 
 function isLikelyAppSheet(ws) {
   const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-  const idx = findHeaderRow(raw, ["application name"], 60);
-  if (idx === -1) return false;
-
-  const headers = raw[idx].map(h => String(h || "").trim().toLowerCase());
-  const hasRpo = headers.some(h => h.includes("rpo") || h.includes("recovery point"));
-  const hasRto = headers.some(h => h.includes("rto") || h.includes("recovery time"));
-  const hasBackup = headers.some(h => h.includes("backup retention") || h.includes("backup size") || h.includes("full backup size"));
-  const hasDR = headers.some(h => h.includes("dr description") || h.includes("dr plans") || h.includes("dr solution"));
-
-  // Require app name and at least one of the DR/backup indicators
-  return hasRpo || hasRto || hasBackup || hasDR;
+  return detectAppHeaderRow(raw) !== -1;
 }
 
 function parseAAQ(workbook) {
@@ -342,20 +393,19 @@ function parseAAQ(workbook) {
   const app_dr_backup = [];
   for (const name of sheetNames) {
     const lname = name.toLowerCase();
-    // skip known non-app sheets
     if (["server", "database", "firewall", "application stakeholder", "logs"].some(t => lname.includes(t))) continue;
 
     const ws = workbook.Sheets[name];
     try {
       normalizeRef(ws);
       if (!isLikelyAppSheet(ws)) continue;
+
       const rows = parseAppDRBackupSheet(ws, name);
       if (rows.length) {
         app_dr_backup.push(...rows);
         notes.push(`Extracted ${rows.length} app DR/Backup rows from ${name}`);
       }
     } catch (e) {
-      // keep quiet but record
       notes.push(`Skipped app parse for ${name}`);
     }
   }
