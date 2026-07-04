@@ -934,7 +934,14 @@ return (
   <>
     <style>{CSS}</style>
 
-    {!localStorage.getItem("token") && <Login />}
+{!localStorage.getItem("token") || localStorage.getItem("token") === "" ? (
+  <Login />
+) : (
+  <div className="app">
+    ...your AAQ tool...
+  </div>
+)}
+
 
     {localStorage.getItem("token") && (
       <div className="app">
