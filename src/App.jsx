@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import * as XLSX from "xlsx";
 import logo from "./assets/kyndryl_logo.webp";
 import Worker from "./workers/aaqWorker.js?worker";
-import Login from "./Login";
+import Login from "./Login.jsx";
 
 // ─── Palette & Theme ───────────────────────────────────────────────────────
 const CSS = `
