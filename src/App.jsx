@@ -934,21 +934,29 @@ return (
   <>
     <style>{CSS}</style>
 
-    <Login />
+    {!localStorage.getItem("token") && <Login />}
 
-    <div className="app">
-      {/* Header */}
-      <div className="header">
-        <img src={logo} alt="Kyndryl" className="logo-img" />
-        <div className="header-text">
-          <h1>AAQ Analysis Tool</h1>
-          <p>Cloud Migration Analysis Tool</p>
+    {localStorage.getItem("token") && (
+      <div className="app">
+        {/* Header */}
+        <div className="header">
+          <img src={logo} alt="Kyndryl" className="logo-img" />
+          <div className="header-text">
+            <h1>AAQ Analysis Tool</h1>
+            <p>Cloud Migration Analysis Tool</p>
+          </div>
+          <div className="privacy-badge">
+            <div className="privacy-dot" />
+            100% Client-Side · No Data Uploaded
+          </div>
         </div>
-        <div className="privacy-badge">
-          <div className="privacy-dot" />
-          100% Client-Side · No Data Uploaded
-        </div>
+
+        {/* rest of your AAQ tool */}
       </div>
+    )}
+  </>
+);
+
 
 
         {/* Upload */}
