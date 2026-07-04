@@ -938,6 +938,7 @@ return (
 
     {localStorage.getItem("token") && (
       <div className="app">
+
         {/* Header */}
         <div className="header">
           <img src={logo} alt="Kyndryl" className="logo-img" />
@@ -950,14 +951,6 @@ return (
             100% Client-Side · No Data Uploaded
           </div>
         </div>
-
-        {/* EVERYTHING ELSE IN YOUR APP GOES HERE */}
-      </div>
-    )}
-  </>
-);
-
-
 
         {/* Upload */}
         {!result && (
@@ -979,6 +972,7 @@ return (
               {loading && <div className="status-line">Processing… large files may take a moment.</div>}
               {error && <div className="status-error">Error: {error}</div>}
             </div>
+
             <input
               ref={fileRef}
               type="file"
@@ -1002,6 +996,7 @@ return (
                   {n.label}
                 </button>
               ))}
+
               <button
                 className="nav-btn"
                 style={{ marginLeft: "auto", color: "var(--accent2)" }}
@@ -1022,6 +1017,7 @@ return (
                   setNav={setNav}
                 />
               )}
+
               {nav === "sizing" && <SizingSection servers={result.servers} />}
               {nav === "databases" && <DatabasesSection databases={result.databases} />}
               {nav === "firewall" && <FirewallSection firewall={result.firewall} />}
@@ -1038,7 +1034,8 @@ return (
             </div>
           </>
         )}
+
       </div>
-    </>
-  );
-}
+    )}
+  </>
+);
