@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import * as XLSX from "xlsx";
 import logo from "./assets/kyndryl_logo.webp";
 import Worker from "./workers/aaqWorker.js?worker";
+import Login from "./Login";
 
 // ─── Palette & Theme ───────────────────────────────────────────────────────
 const CSS = `
@@ -929,22 +930,26 @@ export default function App() {
     { id: "apps", label: "📦 Apps DR/Backup" },
   ];
 
-  return (
-    <>
-      <style>{CSS}</style>
-      <div className="app">
-        {/* Header */}
-        <div className="header">
-          <img src={logo} alt="Kyndryl" className="logo-img" />
-          <div className="header-text">
-            <h1>AAQ Analysis Tool</h1>
-            <p>Cloud Migration Analysis Tool</p>
-          </div>
-          <div className="privacy-badge">
-            <div className="privacy-dot" />
-            100% Client-Side · No Data Uploaded
-          </div>
+return (
+  <>
+    <style>{CSS}</style>
+
+    <Login />
+
+    <div className="app">
+      {/* Header */}
+      <div className="header">
+        <img src={logo} alt="Kyndryl" className="logo-img" />
+        <div className="header-text">
+          <h1>AAQ Analysis Tool</h1>
+          <p>Cloud Migration Analysis Tool</p>
         </div>
+        <div className="privacy-badge">
+          <div className="privacy-dot" />
+          100% Client-Side · No Data Uploaded
+        </div>
+      </div>
+
 
         {/* Upload */}
         {!result && (
