@@ -1042,3 +1042,62 @@ return (
   </>
 );
 }
+
+        {/* Main content */}
+        {result && (
+          <>
+            <div className="nav-bar">
+              {NAVS.map(n => (
+                <button
+                  key={n.id}
+                  className={`nav-btn${nav === n.id ? " active" : ""}`}
+                  onClick={() => setNav(n.id)}
+                >
+                  {n.label}
+                </button>
+              ))}
+
+              <button
+                className="nav-btn"
+                style={{ marginLeft: "auto", color: "var(--accent2)" }}
+                onClick={() => { setResult(null); setFileName(null); setError(null); setLoading(false); }}
+              >
+                ✕ New File
+              </button>
+            </div>
+
+            <div className="content">
+              {nav === "home" && (
+                <HomeSection
+                  servers={result.servers}
+                  databases={result.databases}
+                  firewall={result.firewall}
+                  stakeholders={result.stakeholders}
+                  appDrBackup={result.app_dr_backup}
+                  setNav={setNav}
+                />
+              )}
+
+              {nav === "sizing" && <SizingSection servers={result.servers} />}
+              {nav === "databases" && <DatabasesSection databases={result.databases} />}
+              {nav === "firewall" && <FirewallSection firewall={result.firewall} />}
+              {nav === "stakeholders" && <StakeholdersSection stakeholders={result.stakeholders} />}
+              {nav === "apps" && <AppsDRBackupSection appDrBackup={result.app_dr_backup} />}
+
+              {/* Parser notes */}
+              <div className="notes-box">
+                <div className="section-title" style={{ fontSize: 14, marginBottom: 12 }}>
+                  Parser <span>Notes</span>
+                </div>
+                {result.notes.map((n, i) => (
+                  <div className="note-item" key={i}>{n}</div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    )}
+  </>
+);
+}
