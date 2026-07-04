@@ -1030,12 +1030,13 @@ return (
                 <div className="section-title" style={{ fontSize: 14, marginBottom: 12 }}>
                   Parser <span>Notes</span>
                 </div>
-                {result.notes.map((n, i) => <div className="note-item" key={i}>{n}</div>)}
+                {result.notes.map((n, i) => (
+                  <div className="note-item" key={i}>{n}</div>
+                ))}
               </div>
             </div>
           </>
         )}
-
       </div>
     )}
   </>
