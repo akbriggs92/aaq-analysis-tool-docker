@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import * as XLSX from "xlsx";
 import logo from "./assets/kyndryl_logo.webp";
 import Worker from "./workers/aaqWorker.js?worker";
-import Login from "./Login.jsx";
 
 // ─── Palette & Theme ───────────────────────────────────────────────────────
 const CSS = `
@@ -934,10 +933,6 @@ return (
   <>
     <style>{CSS}</style>
 
-    {/* LOGIN PAGE */}
-    {!localStorage.getItem("token") ? (
-      <Login />
-    ) : (
       <div className="app">
 
         {/* Header */}
